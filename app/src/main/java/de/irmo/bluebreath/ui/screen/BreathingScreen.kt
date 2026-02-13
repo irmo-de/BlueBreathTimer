@@ -57,6 +57,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import de.irmo.bluebreath.data.UserPreferences
 import de.irmo.bluebreath.model.BreathingPhase
 import de.irmo.bluebreath.model.CYCLE_DURATION_SECONDS
 import de.irmo.bluebreath.model.VibrationPattern
@@ -79,11 +81,18 @@ fun BreathingScreen(modifier: Modifier = Modifier) {
     val phaseTimeRemaining by BreathingService.phaseTimeRemaining.collectAsState()
 
     // User settings
-    var selectedReps by rememberSaveable { mutableIntStateOf(4) }
-    var selectedPattern by rememberSaveable { mutableStateOf(VibrationPattern.STANDARD) }
-    var vibrationIntensity by rememberSaveable { mutableFloatStateOf(0.7f) }
-    var pulseDurationMs by rememberSaveable { mutableFloatStateOf(80f) }
+    val userPreferences = remember { UserPreferences(context) }
+    var selectedReps by rememberSaveable { mutableIntStateOf(userPreferences.reps) }
+    var selectedPattern by rememberSaveable { mutableStateOf(userPreferences.pattern) }
+    var vibrationIntensity by rememberSaveable { mutableFloatStateOf(userPreferences.intensity) }
+    var pulseDurationMs by rememberSaveable { mutableFloatStateOf(userPreferences.pulseDurationMs) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+
+    // Save changes to preferences
+    LaunchedEffect(selectedReps) { userPreferences.reps = selectedReps }
+    LaunchedEffect(selectedPattern) { userPreferences.pattern = selectedPattern }
+    LaunchedEffect(vibrationIntensity) { userPreferences.intensity = vibrationIntensity }
+    LaunchedEffect(pulseDurationMs) { userPreferences.pulseDurationMs = pulseDurationMs }
 
     // Notification permission (API 33+)
     val notificationPermissionLauncher = rememberLauncherForActivityResult(

@@ -1,5 +1,6 @@
 package de.irmo.bluebreath.haptics
 
+import android.media.AudioAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
@@ -9,6 +10,12 @@ import de.irmo.bluebreath.model.VibrationPattern
 private const val TAG = "HapticsManager"
 
 class HapticsManager(private val vibrator: Vibrator) {
+
+    // usage=USAGE_ALARM to bypass "Touch feedback" system toggle
+    private val audioAttributes = AudioAttributes.Builder()
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .setUsage(AudioAttributes.USAGE_ALARM)
+        .build()
 
     fun vibrateForPhase(
         phase: BreathingPhase,
@@ -34,9 +41,9 @@ class HapticsManager(private val vibrator: Vibrator) {
         if (!vibrator.hasVibrator()) return
         val amplitude = (200 * intensity).toInt().coerceIn(1, 255)
         if (vibrator.hasAmplitudeControl()) {
-            vibrator.vibrate(VibrationEffect.createOneShot(60, amplitude))
+            vibrator.vibrate(VibrationEffect.createOneShot(60, amplitude), audioAttributes)
         } else {
-            vibrator.vibrate(VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE))
+            vibrator.vibrate(VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE), audioAttributes)
         }
     }
 
@@ -45,7 +52,7 @@ class HapticsManager(private val vibrator: Vibrator) {
         val amp = (220 * intensity).toInt().coerceIn(1, 255)
         val timings = longArrayOf(0, 100, 100, 100, 100, 200)
         val amplitudes = intArrayOf(0, amp, 0, amp, 0, amp)
-        vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+        vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1), audioAttributes)
     }
 
     fun cancel() {
@@ -262,27 +269,31 @@ class HapticsManager(private val vibrator: Vibrator) {
 
     private fun vibrateShortBuzzes(count: Int, amplitude: Int, durationMs: Long, gapMs: Long) {
         if (count <= 0) return
-        Log.d(TAG, "vibrateShortBuzzes: count=$count, amplitude=$amplitude, duration=${durationMs}ms, gap=${gapMs}ms")
+        // Allow shorter durations now that we use USAGE_ALARM, but keep a tiny safety floor
+        val effectiveDuration = durationMs.coerceAtLeast(20L)
+        // Respect the requested amplitude (intensity) completely
+        val effectiveAmplitude = amplitude.coerceIn(1, 255)
+        Log.d(TAG, "vibrateShortBuzzes: count=$count, amp=$effectiveAmplitude, duration=${effectiveDuration}ms")
+
         if (count == 1) {
-            Log.d(TAG, "Firing single createOneShot(${durationMs}ms, amp=$amplitude)")
-            vibrator.vibrate(VibrationEffect.createOneShot(durationMs, amplitude))
+            Log.d(TAG, "Firing single buzz as createOneShot (${effectiveDuration}ms, amp=$effectiveAmplitude)")
+            vibrator.vibrate(VibrationEffect.createOneShot(effectiveDuration, effectiveAmplitude), audioAttributes)
             return
         }
-        // For multiple buzzes, start with a silent segment so the first buzz triggers cleanly
-        val timings = LongArray(count * 2 + 1)
-        val amplitudes = IntArray(count * 2 + 1)
-        timings[0] = 0 // no initial delay
-        amplitudes[0] = 0
+
+        // Always use waveform — createOneShot is unreliable for short durations on some devices
+        val timings = LongArray(count * 2)
+        val amplitudes = IntArray(count * 2)
         for (i in 0 until count) {
-            timings[i * 2 + 1] = durationMs
-            timings[i * 2 + 2] = gapMs
-            amplitudes[i * 2 + 1] = amplitude
-            amplitudes[i * 2 + 2] = 0
+            timings[i * 2] = effectiveDuration
+            timings[i * 2 + 1] = gapMs
+            amplitudes[i * 2] = effectiveAmplitude
+            amplitudes[i * 2 + 1] = 0
         }
         vibrateWaveform(timings, amplitudes)
     }
 
     private fun vibrateWaveform(timings: LongArray, amplitudes: IntArray) {
-        vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+        vibrator.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1), audioAttributes)
     }
 }
