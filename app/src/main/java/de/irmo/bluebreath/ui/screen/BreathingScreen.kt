@@ -27,19 +27,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -82,6 +82,7 @@ fun BreathingScreen(modifier: Modifier = Modifier) {
     var selectedReps by rememberSaveable { mutableIntStateOf(4) }
     var selectedPattern by rememberSaveable { mutableStateOf(VibrationPattern.STANDARD) }
     var vibrationIntensity by rememberSaveable { mutableFloatStateOf(0.7f) }
+    var pulseDurationMs by rememberSaveable { mutableFloatStateOf(80f) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
 
     // Notification permission (API 33+)
@@ -225,23 +226,17 @@ fun BreathingScreen(modifier: Modifier = Modifier) {
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                SingleChoiceSegmentedButtonRow(
-                                    modifier = Modifier.fillMaxWidth()
+                                @OptIn(ExperimentalLayoutApi::class)
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    VibrationPattern.entries.forEachIndexed { index, pattern ->
-                                        SegmentedButton(
+                                    VibrationPattern.entries.forEach { pattern ->
+                                        FilterChip(
                                             selected = selectedPattern == pattern,
                                             onClick = { selectedPattern = pattern },
-                                            shape = SegmentedButtonDefaults.itemShape(
-                                                index = index,
-                                                count = VibrationPattern.entries.size
-                                            )
-                                        ) {
-                                            Text(
-                                                pattern.displayName,
-                                                style = MaterialTheme.typography.labelSmall
-                                            )
-                                        }
+                                            label = { Text(pattern.displayName) }
+                                        )
                                     }
                                 }
 
@@ -266,6 +261,29 @@ fun BreathingScreen(modifier: Modifier = Modifier) {
                                 ) {
                                     Text("Light", style = MaterialTheme.typography.labelSmall)
                                     Text("Strong", style = MaterialTheme.typography.labelSmall)
+                                }
+
+                                Spacer(modifier = Modifier.height(20.dp))
+
+                                Text(
+                                    "Pulse Duration: ${pulseDurationMs.toInt()}ms",
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Slider(
+                                    value = pulseDurationMs,
+                                    onValueChange = { pulseDurationMs = it },
+                                    valueRange = 30f..200f,
+                                    steps = 16
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Short", style = MaterialTheme.typography.labelSmall)
+                                    Text("Long", style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
@@ -310,6 +328,7 @@ fun BreathingScreen(modifier: Modifier = Modifier) {
                             putExtra(BreathingService.EXTRA_REPS, selectedReps)
                             putExtra(BreathingService.EXTRA_PATTERN, selectedPattern.name)
                             putExtra(BreathingService.EXTRA_INTENSITY, vibrationIntensity)
+                            putExtra(BreathingService.EXTRA_PULSE_DURATION, pulseDurationMs.toLong())
                         }
                         context.startForegroundService(intent)
                     },

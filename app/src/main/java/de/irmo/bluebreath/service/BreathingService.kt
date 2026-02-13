@@ -42,6 +42,7 @@ class BreathingService : Service() {
         const val EXTRA_REPS = "reps"
         const val EXTRA_PATTERN = "pattern"
         const val EXTRA_INTENSITY = "intensity"
+        const val EXTRA_PULSE_DURATION = "pulse_duration"
 
         private val _isRunning = MutableStateFlow(false)
         val isRunning: StateFlow<Boolean> = _isRunning
@@ -86,7 +87,8 @@ class BreathingService : Service() {
                 val reps = intent.getIntExtra(EXTRA_REPS, 4)
                 val patternName = intent.getStringExtra(EXTRA_PATTERN) ?: VibrationPattern.STANDARD.name
                 val intensity = intent.getFloatExtra(EXTRA_INTENSITY, 0.7f)
-                startBreathing(reps, VibrationPattern.valueOf(patternName), intensity)
+                val pulseDuration = intent.getLongExtra(EXTRA_PULSE_DURATION, 80L)
+                startBreathing(reps, VibrationPattern.valueOf(patternName), intensity, pulseDuration)
             }
             ACTION_STOP -> {
                 stopBreathing()
@@ -97,7 +99,7 @@ class BreathingService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun startBreathing(reps: Int, pattern: VibrationPattern, intensity: Float) {
+    private fun startBreathing(reps: Int, pattern: VibrationPattern, intensity: Float, pulseDuration: Long = 80L) {
         val notification = buildNotification("Starting breathing exercise...")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
@@ -117,9 +119,9 @@ class BreathingService : Service() {
             for (rep in 1..reps) {
                 _currentRep.value = rep
 
-                runPhase(BreathingPhase.INHALE, pattern, intensity)
-                runPhase(BreathingPhase.HOLD, pattern, intensity)
-                runPhase(BreathingPhase.EXHALE, pattern, intensity)
+                runPhase(BreathingPhase.INHALE, pattern, intensity, pulseDuration)
+                runPhase(BreathingPhase.HOLD, pattern, intensity, pulseDuration)
+                runPhase(BreathingPhase.EXHALE, pattern, intensity, pulseDuration)
             }
 
             // Complete
@@ -142,18 +144,22 @@ class BreathingService : Service() {
     private suspend fun runPhase(
         phase: BreathingPhase,
         pattern: VibrationPattern,
-        intensity: Float
+        intensity: Float,
+        pulseDuration: Long = 80L
     ) {
         _currentPhase.value = phase
         val durationMs = phase.durationSeconds * 1000L
         val updateInterval = 50L
 
-        // Transition haptic
-        hapticsManager?.vibrateTransition(intensity)
-        delay(100)
+        // For Simple patterns, the buzzes are the phase markers — skip the transition vibration
+        val isSimplePattern = pattern == VibrationPattern.SIMPLE_1 || pattern == VibrationPattern.SIMPLE_2
+        if (!isSimplePattern) {
+            hapticsManager?.vibrateTransition(intensity)
+            delay(100)
+        }
 
         // Phase vibration pattern
-        hapticsManager?.vibrateForPhase(phase, pattern, intensity)
+        hapticsManager?.vibrateForPhase(phase, pattern, intensity, pulseDuration)
 
         // Update notification
         updateNotification("Cycle ${_currentRep.value}/${_totalReps.value} - ${phase.displayName}")

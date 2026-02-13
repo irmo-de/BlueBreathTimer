@@ -2,24 +2,31 @@ package de.irmo.bluebreath.haptics
 
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.util.Log
 import de.irmo.bluebreath.model.BreathingPhase
 import de.irmo.bluebreath.model.VibrationPattern
+
+private const val TAG = "HapticsManager"
 
 class HapticsManager(private val vibrator: Vibrator) {
 
     fun vibrateForPhase(
         phase: BreathingPhase,
         pattern: VibrationPattern,
-        intensity: Float
+        intensity: Float,
+        pulseDurationMs: Long = 80L
     ) {
         if (!vibrator.hasVibrator()) return
-        vibrator.cancel()
+        // No explicit cancel() here — vibrate() implicitly replaces any ongoing vibration.
+        // Calling cancel() right before vibrate() can race and kill the new vibration on some devices.
 
         when (pattern) {
             VibrationPattern.GENTLE -> vibrateGentle(phase, intensity)
             VibrationPattern.STANDARD -> vibrateStandard(phase, intensity)
             VibrationPattern.STRONG -> vibrateStrong(phase, intensity)
             VibrationPattern.PULSE -> vibratePulse(phase, intensity)
+            VibrationPattern.SIMPLE_1 -> vibrateSimple1(phase, intensity, pulseDurationMs)
+            VibrationPattern.SIMPLE_2 -> vibrateSimple2(phase, intensity, pulseDurationMs)
         }
     }
 
@@ -213,6 +220,66 @@ class HapticsManager(private val vibrator: Vibrator) {
             }
             else -> {}
         }
+    }
+
+    // --- Simple I: inhale=1 buzz, hold=2 buzzes, exhale=3 buzzes ---
+
+    private fun vibrateSimple1(phase: BreathingPhase, intensity: Float, pulseDurationMs: Long) {
+        val amp = (180 * intensity).toInt().coerceIn(1, 255)
+        val gap = 150L
+        when (phase) {
+            BreathingPhase.INHALE -> {
+                vibrateShortBuzzes(1, amp, pulseDurationMs, gap)
+            }
+            BreathingPhase.HOLD -> {
+                vibrateShortBuzzes(2, amp, pulseDurationMs, gap)
+            }
+            BreathingPhase.EXHALE -> {
+                vibrateShortBuzzes(3, amp, pulseDurationMs, gap)
+            }
+            else -> {}
+        }
+    }
+
+    // --- Simple II: inhale=1 buzz, hold=1 buzz, exhale=2 buzzes ---
+
+    private fun vibrateSimple2(phase: BreathingPhase, intensity: Float, pulseDurationMs: Long) {
+        val amp = (180 * intensity).toInt().coerceIn(1, 255)
+        val gap = 150L
+        when (phase) {
+            BreathingPhase.INHALE -> {
+                vibrateShortBuzzes(1, amp, pulseDurationMs, gap)
+            }
+            BreathingPhase.HOLD -> {
+                vibrateShortBuzzes(1, amp, pulseDurationMs, gap)
+            }
+            BreathingPhase.EXHALE -> {
+                vibrateShortBuzzes(2, amp, pulseDurationMs, gap)
+            }
+            else -> {}
+        }
+    }
+
+    private fun vibrateShortBuzzes(count: Int, amplitude: Int, durationMs: Long, gapMs: Long) {
+        if (count <= 0) return
+        Log.d(TAG, "vibrateShortBuzzes: count=$count, amplitude=$amplitude, duration=${durationMs}ms, gap=${gapMs}ms")
+        if (count == 1) {
+            Log.d(TAG, "Firing single createOneShot(${durationMs}ms, amp=$amplitude)")
+            vibrator.vibrate(VibrationEffect.createOneShot(durationMs, amplitude))
+            return
+        }
+        // For multiple buzzes, start with a silent segment so the first buzz triggers cleanly
+        val timings = LongArray(count * 2 + 1)
+        val amplitudes = IntArray(count * 2 + 1)
+        timings[0] = 0 // no initial delay
+        amplitudes[0] = 0
+        for (i in 0 until count) {
+            timings[i * 2 + 1] = durationMs
+            timings[i * 2 + 2] = gapMs
+            amplitudes[i * 2 + 1] = amplitude
+            amplitudes[i * 2 + 2] = 0
+        }
+        vibrateWaveform(timings, amplitudes)
     }
 
     private fun vibrateWaveform(timings: LongArray, amplitudes: IntArray) {

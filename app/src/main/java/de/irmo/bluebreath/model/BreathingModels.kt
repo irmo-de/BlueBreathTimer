@@ -12,7 +12,9 @@ enum class VibrationPattern(val displayName: String) {
     GENTLE("Gentle"),
     STANDARD("Standard"),
     STRONG("Strong"),
-    PULSE("Pulse")
+    PULSE("Pulse"),
+    SIMPLE_1("Simple I"),
+    SIMPLE_2("Simple II")
 }
 
 const val CYCLE_DURATION_SECONDS = 4 + 7 + 8
