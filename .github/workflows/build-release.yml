@@ -28,10 +28,13 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Rename APK
-        run: mv app/build/outputs/apk/release/app-release.apk BlueBreathTimer.apk
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          SHORT_SHA=${GITHUB_SHA::7}
+          mv app/build/outputs/apk/release/app-release.apk "BlueBreathTimer-${TAG}-${SHORT_SHA}.apk"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: BlueBreathTimer.apk
+          files: BlueBreathTimer-*.apk
           generate_release_notes: true
