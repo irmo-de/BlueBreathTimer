@@ -100,6 +100,9 @@ class BreathingService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startBreathing(reps: Int, pattern: VibrationPattern, intensity: Float, pulseDuration: Long = 80L) {
+        breathingJob?.cancel()
+        hapticsManager?.cancel()
+
         val notification = buildNotification("Starting breathing exercise...")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
