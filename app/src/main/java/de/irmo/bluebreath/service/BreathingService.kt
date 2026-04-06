@@ -17,7 +17,9 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import android.app.Service
+import de.irmo.bluebreath.AppActions
 import de.irmo.bluebreath.MainActivity
+import de.irmo.bluebreath.data.UserPreferences
 import de.irmo.bluebreath.haptics.HapticsManager
 import de.irmo.bluebreath.model.BreathingPhase
 import de.irmo.bluebreath.model.VibrationPattern
@@ -84,11 +86,10 @@ class BreathingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
-                val reps = intent.getIntExtra(EXTRA_REPS, 4)
-                val patternName = intent.getStringExtra(EXTRA_PATTERN) ?: VibrationPattern.STANDARD.name
-                val intensity = intent.getFloatExtra(EXTRA_INTENSITY, 0.7f)
-                val pulseDuration = intent.getLongExtra(EXTRA_PULSE_DURATION, 80L)
-                startBreathing(reps, VibrationPattern.valueOf(patternName), intensity, pulseDuration)
+                startBreathingFromIntent(intent)
+            }
+            AppActions.ACTION_START_ASSIST_TIMER -> {
+                startAssistBreathing()
             }
             ACTION_STOP -> {
                 stopBreathing()
@@ -142,6 +143,24 @@ class BreathingService : Service() {
 
             stopBreathing()
         }
+    }
+
+    private fun startBreathingFromIntent(intent: Intent) {
+        val reps = intent.getIntExtra(EXTRA_REPS, 4)
+        val patternName = intent.getStringExtra(EXTRA_PATTERN) ?: VibrationPattern.STANDARD.name
+        val intensity = intent.getFloatExtra(EXTRA_INTENSITY, 0.7f)
+        val pulseDuration = intent.getLongExtra(EXTRA_PULSE_DURATION, 80L)
+        startBreathing(reps, VibrationPattern.valueOf(patternName), intensity, pulseDuration)
+    }
+
+    private fun startAssistBreathing() {
+        val preferences = UserPreferences(this)
+        startBreathing(
+            reps = AppActions.DEFAULT_ASSIST_REPS,
+            pattern = preferences.pattern,
+            intensity = preferences.intensity,
+            pulseDuration = preferences.pulseDurationMs.toLong()
+        )
     }
 
     private suspend fun runPhase(

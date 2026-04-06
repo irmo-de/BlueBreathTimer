@@ -25,9 +25,9 @@ Attach a task with one of these options.
 
 ### Option 1: Send Intent
 
-- Action: `de.irmo.bluebreath.action.START_ASSIST_TIMER`
+- Action: `de.irmo.bluebreath.action.START_ASSIST_TIMER_ACTIVITY`
 - Package: `de.irmo.bluebreath`
-- Class: `de.irmo.bluebreath.MainActivity`
+- Class: `de.irmo.bluebreath.StartBreathingActivity`
 - Target: `Activity`
 
 ### Option 2: Run Shell
@@ -35,27 +35,27 @@ Attach a task with one of these options.
 Command:
 
 ```sh
-am start -a de.irmo.bluebreath.action.START_ASSIST_TIMER -n de.irmo.bluebreath/.MainActivity
+am start -a de.irmo.bluebreath.action.START_ASSIST_TIMER_ACTIVITY -n de.irmo.bluebreath/.StartBreathingActivity
 ```
 
 Enable `Use Root` only if your Tasker setup needs it.
 
 ## What This Does
 
-- Opens BlueBreath
 - Starts a breathing session immediately
 - Uses `16` reps
 - Reuses the app's saved vibration pattern, intensity, and pulse duration
+- Works without going through the activity UI path
 
 ## Test Command
 
 You can test the app hook manually over `adb`:
 
 ```sh
-adb shell am start -a de.irmo.bluebreath.action.START_ASSIST_TIMER -n de.irmo.bluebreath/.MainActivity
+adb shell am start -a de.irmo.bluebreath.action.START_ASSIST_TIMER_ACTIVITY -n de.irmo.bluebreath/.StartBreathingActivity
 ```
 
 ## Notes
 
 - Screen-off volume long-press detection is device-dependent and can be unreliable without media playback.
-- The BlueBreath app already contains the intent handler, so no additional app changes are needed for the Tasker setup.
+- The background broadcast and direct service paths were unreliable on this device. The app now uses a minimal trampoline activity that immediately starts the breathing service and closes.

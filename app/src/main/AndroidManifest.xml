@@ -35,10 +35,27 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".StartBreathingActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:finishOnTaskLaunch="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="de.irmo.bluebreath.action.START_ASSIST_TIMER_ACTIVITY" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".service.BreathingService"
             android:foregroundServiceType="specialUse"
-            android:exported="false">
+            android:exported="true">
+            <intent-filter>
+                <action android:name="de.irmo.bluebreath.action.START_ASSIST_TIMER" />
+            </intent-filter>
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="breathing_timer_with_haptics" />
